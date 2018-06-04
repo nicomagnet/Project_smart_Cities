@@ -133,10 +133,6 @@ for k = 1:n-1
  th(:,k+1) = x(2,:)';
  th(:,k+1) = min(TintSP(k+1),th(:,k+1)); % limit th_int to set point
  Qg(k+1) = Kp*(TintSP(k+1) - th(7,k+1));
- 
-%  th(:,k) = x(2,:)';
-%  th(:,k) = min(TintSP(k),th(:,k)); % limit th_int to set point
-%  Qhvac(k+1) = Kp*(TintSP(k) - th(7,k));
 end
 subplot(211), hold on, plot(Time/3600, th(7,:),'r'), hold off
 
