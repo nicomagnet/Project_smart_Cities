@@ -5,7 +5,7 @@ M = dlmread('CAN_PQ_Montreal.Mirabel.csv');
 
 % 6 is max temp
 % 7 is min temp
-from = 30*24;         %start time
+from = 200*24;         %start time
 fs=1*5*24;
 period = [1:fs]';  %simulation period
 Time = 3600*period;
@@ -32,7 +32,7 @@ plot(Time/(24*3600), PhiDif,'r')  % diffusif on surface
 plot(Time/(24*3600), RadHDif,'k') % diffusif on horizontal surface
 plot(Time/(24*3600), PhiRef,'m')  % reflected on surface
 legend('\Phi_d_i_r','\Phi_N_d_i_r','\Phi_D_i_f', '\Phi_N_D_i_f')
-title('Radiation on the surface (Winter Case)')
+title('Radiation on the surface (Summer Case)')
 xlabel('Time [Days]')
 ylabel('Radiation on the surface [Wh/m^{2}]')
 %% plot the analysis of data 
@@ -54,7 +54,7 @@ figure(1);
 %plot(n/fs,x,n/fs,yf,'-.r*'); grid on;legend('Original signal',...
 plot(Time/(24*3600),x); grid on;
 % legend('Variation Temperature');
-title('Temperature in Montreal(Winter Case)')
+title('Temperature in Montreal')
 xlabel('Time [Days]')
 ylabel('Temperature[°C]')
 % %% Analize the week cycle

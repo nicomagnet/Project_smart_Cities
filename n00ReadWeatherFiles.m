@@ -11,7 +11,7 @@ clc %clear console
 
 M = dlmread('CAN_PQ_Montreal.Mirabel.csv');
 
-from = 25*24;             %start time
+from = 200*24;             %start time
 period = [1:31*24]';  %simulation period
 
 Time = 3600*period;
