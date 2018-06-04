@@ -1,30 +1,32 @@
-% 5 walls: concrete (4 layesrs) + insulation (2 layers)
+% 5 walls: concrete (4 layers) + insulation (2 layers)
 % glass (1 node)
 % ventilation
 % Inputs: outdoor temperature, solar radiation, HVAC heat flow rate
-% Free running (FR) / without control
+% Feed back(FB) / control : 1) HVAC 2) enveloppe: ventilation + solar
 
 clc, clear all
 % pkg load control
+
 % Data
 % ******
+% Read data
+n00ReadWeatherFilesSolRad;  %read weather files
+Kp = 10000; %P-controller gain: large for precision
 Sc = 7.2*6.925; Si = Sc; Sg = 10*1.01*1.48; %surface [m2]: concrete, insulation, glass
 Va = Sc*2.5; %air volume[m3]
 
 rhoa = 1.2; ca = 1000;  %indoor air density; heat capacity
-Vpa = 1*Va/3600;        %infiltration and ventilation air: volume/hour
-
-Kp = 10000; %P-controller gain: large for precision
+Vpa = 2*Va/3600;        %infiltration and ventilation air: volume/hour
 
 % c: concrete; i: insulation;  g: glass
-lamc = 2;       lami = 0.04;    lamg = 0.5;   %[W/m K]
-rhoccc = 2.5e6; rhoici = 2020*40;   rhogcg = 1000*1000; %[J/K m3]
+lamc = 1.25;       lami = 0.04;    lamg = 0.5;   %[W/m K]
+rhoccc = 6.7e5; rhoici = 2020*40;   rhogcg = 1000*1000; %[J/K m3]
 wc = 0.25;       wi = 0.08;      wg = 0.036;    %[m]
 epswLW = 0.9;   %long wave wall emmisivity
 epswSW = 0.8;   %short wave wall emmisivity
 
 epsgLW = 0.9;   %long wave glass emmisivity
-taugSW = 0.8;   %short wave glass transmittance
+taugSW = 0.8;   %short wave glass transmitance
 alphagSW = 0.2; %short wave glass absortivity
 
 % convection coefficents
@@ -34,34 +36,23 @@ hi = 4; ho = 10;  %[W/m2 K]
 % *****
 nth = 14; nq = 16; % # of temperature node, # of flow nodes
 
-Tm7_15=19; Tm8_9=19; Tm9_10=19; %mean temp for radiative exchange
-sigma = 5.67e-8; %[W/m2 K4]
-Fwg = 1/5;
+Tm = 20;   %mean temp for radiative exchange
+sigma = 5.67e-8;  %[W/m2 K4]
+Fwg = 1/5;        %view factor wall - glass
 
 % G conductance matrix
 G = zeros(nq,nq);
-% G(1,1)=ho*Sc; G(2,2)=lamc/(wc/8)*Sc; for i=3:9; G(i,i)=G(2,2); end;
-% G(10,10)=lami/(wi/4)*Si; for i=11:13; G(i,i)=G(10,10); end; G(14,14)=hi*Si;
-% G(15,15)=epswLW/(1-epswLW)*Si*4*sigma*Tm7_15^3;
-% G(16,16)=Fwg*Si*4*sigma*Tm8_9^3;
-% G(17,17)=epsgLW/(1-epsgLW)*Sg*sigma*Tm9_10^3;
-% G(18,18)=ho*Sg; G(19,19)=lamg/(wg/2)*Sg; G(20,20)=G(19,19); G(21,21)=hi*Sg;
-% G(22,22)=Vpa*rhoa*ca;
-
 G(1,1)=ho*Sc; G(2,2)=(lamc/(wc/8))*Sc; for i=3:9; G(i,i)=G(2,2); end;
 G(10,10)=(lami/(wi/4))*Si; for i=11:13; G(i,i)=G(10,10); end; G(15,15)=hi*Si;
-G(14,14)=(hi*6.8*6.6);
+G(14,14)=Kp;
 G(16,16)=Vpa*rhoa*ca + Sg*lamg;
 
 % C capacity matrix
 C = zeros(nth);
-% C(12,12)=1/4*Sc*wc*rhoccc; for i=13:15; C(i,i)=C(12,12); end;
-% C(16,16)=1/2*Si*wi*rhoici; C(17,17)=C(16,16);
-% C(18,18)=Sg*wg*rhogcg; C(19,19)=Va*rhoa*ca;
-
 C(8,8)=1/4*Sc*wc*rhoccc; for i=9:11; C(i,i)=C(8,8); end;
 C(12,12)=1/2*Si*wi*rhoici; C(13,13)=C(12,12);
-C(14,14)=Sg*wg*rhogcg; 
+C(14,14)=Sg*wg*rhogcg + Va*rhoa*ca; 
+
 
 % A adjancy matrix
 A = zeros(nq,nth);
@@ -105,30 +96,67 @@ Bs = inv(CC)*[-K21*inv(K11)*Kb1+Kb2 -K21*inv(K11) eye(nnodes-n0,nnodes-n0)];
 %Select relevant inputs and outputs
 Bs = Bs(:,[[1 14 16] nq+[1 7 14]]); %inputs: [To Ti To Phiw Phii Qh]
 Cs = zeros(1,nC);Cs(nC)=1;  %output
-Ds = 0;
+%Ds = zeros(1,length(Bs));
+Ds=0;
 
 % SIMULATION
 % **********
 
-n00ReadWeatherFiles;  %read weather files
-
 n = size(Time,1);
 th = zeros(nth,n);
-Qh = zeros(n,1);
-TintSP = 40*ones(n,1);
+Qh = zeros(n,1);  %auxiliary sources (electrical, persons, etc.)
 
-%inputs
-u = [Temp Temp Temp ...
-  epswSW*Sc*PhiDif taugSW*epswSW*Sg*PhiDif ...
+TintSP = 20*ones(n,1);
+% % % Inputs
+% % PhiTot = PhiDir + PhiDif + PhiRef;
+% % u = [Temp Temp Temp ...
+% %   epswSW*Sc*PhiTot taugSW*epswSW*Sg*PhiTot ...
+% %   Qh];
+% % 
+% %   % Integrate using lsim (linear systems)
+% % x0 = zeros(nth,n);
+% % sys = ss(As,Bs,Cs,Ds);
+% % [y, t, x] = lsim(sys, u, Time);
+% % subplot(2,1,1)
+% % plot(Time/3600,y,'g', Time/3600, Temp,'b'), 
+% % xlabel('Time [h]'), ylabel('T [C]')
+% % Qh = Kp*(TintSP - y); Qh(1)=0; % thermal load
+% % subplot(212), plot(Time/3600,Qh,'r')
+% % 
+% % % Integrate at each time step 0:dt:dt
+% % % needs to iterate
+% % dt = 3600/1; % simulation step 1h/dt = 3600s / dt
+% % th = zeros(size(As,2),n);
+% % for k = 1:n-1
+% %  x0 = th(:,k);
+% %  % x = lsode (@(x, t) ssm(x, t, As, Bs, u(k,:)'), x0, 0:dt:dt);
+% %  [y, t, x] = lsim(sys, u(k:k+1,:), 0:dt:dt,x0);
+% %  th(:,k+1) = x(2,:)';
+% %  th(:,k+1) = min(TintSP(k+1),th(:,k+1)); % limit th_int to set point
+% %  Qg(k+1) = Kp*(TintSP(k+1) - th(7,k+1));
+% %  
+% % %  th(:,k) = x(2,:)';
+% % %  th(:,k) = min(TintSP(k),th(:,k)); % limit th_int to set point
+% % %  Qhvac(k+1) = Kp*(TintSP(k) - th(7,k));
+% % end
+% % subplot(211), hold on, plot(Time/3600, th(7,:),'r'), hold off
+% % 
+% % subplot(212), hold on, plot(Time/3600,Qg), hold off
+% % xlabel('Time [h]'), ylabel('Q_g [W]')
+% % 
+% Inputs
+PhiTot = PhiDir + PhiDif + PhiRef;
+u = [Temp Temp Temp TintSP ...
+  epswSW*Sc*PhiTot taugSW*epswSW*Sg*PhiTot alphagSW*Sg*PhiTot ...
   Qh];
 
+  % Integrate using lsim (linear systems)
 x0 = zeros(nth,n);
 sys = ss(As,Bs,Cs,Ds);
 [y, t, x] = lsim(sys, u, Time);
 subplot(2,1,1)
-plot(Time/3600,y,'g', Time/3600, Temp,'b'), xlabel('Time [h]')
-title('Simulation lsim'), ylabel('T [C]')
-
+plot(Time/3600,y,'g', Time/3600, Temp,'b'), 
+xlabel('Time [h]'), ylabel('T [C]')
 Qh = Kp*(TintSP - y); Qh(1)=0; % thermal load
 subplot(212), plot(Time/3600,Qh,'r')
 

@@ -32,9 +32,9 @@ clear M
 B = 90; Z = 0; L = 45; albedo = 0.2;
 [PhiDir, PhiDif, PhiRef] = fSolRadTiltSurf(month, day, hour, minute, ...
   RadNDir, RadHDif, B, Z, L, albedo);
-plot(Time/(24*3600), PhiDir,'b'), hold on %direct on surface
-plot(Time/(24*3600), RadNDir,'g') % direct on normal to sun
-plot(Time/(24*3600), PhiDif,'r')  % diffusif on surface
-plot(Time/(24*3600), RadHDif,'k') % diffusif on horizontal surface
-plot(Time/(24*3600), PhiRef,'m')  % reflected on surface
-legend('\Phi_d_i_r','\Phi_N_d_i_r','\Phi_D_i_f', '\Phi_N_D_i_f')
+% plot(Time/(24*3600), PhiDir,'b'), hold on %direct on surface
+% plot(Time/(24*3600), RadNDir,'g') % direct on normal to sun
+% plot(Time/(24*3600), PhiDif,'r')  % diffusif on surface
+% plot(Time/(24*3600), RadHDif,'k') % diffusif on horizontal surface
+% plot(Time/(24*3600), PhiRef,'m')  % reflected on surface
+% legend('\Phi_d_i_r','\Phi_N_d_i_r','\Phi_D_i_f', '\Phi_N_D_i_f')
