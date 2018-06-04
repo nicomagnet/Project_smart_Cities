@@ -1,0 +1,1 @@
+function xdot = ssm(x, t, A, B, u)%state-space modelxdot = A*x + B*u;% endfunction

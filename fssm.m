@@ -1,0 +1,1 @@
+function xdot = fssm(x, t, A, B, u)% State space modelxdot = As*x + Bs*u;endfunction
