@@ -11,7 +11,7 @@ clc, clear all
 % ******
 % Read data
 n00ReadWeatherFilesSolRad;  %read weather files
-Kp = 10000; %P-controller gain: large for precision
+Kp = 1000; %P-controller gain: large for precision
 Sc = 7.2*6.925; Si = Sc; Sg = 10*1.01*1.48; %surface [m2]: concrete, insulation, glass
 Va = Sc*2.5; %air volume[m3]
 
@@ -19,8 +19,11 @@ rhoa = 1.2; ca = 1000;  %indoor air density; heat capacity
 Vpa = 2*Va/3600;        %infiltration and ventilation air: volume/hour
 
 % c: concrete; i: insulation;  g: glass
-lamc = 1.25;       lami = 0.04;    lamg = 0.5;   %[W/m K]
-rhoccc = 6.7e5; rhoici = 2020*40;   rhogcg = 1000*1000; %[J/K m3]
+lamc = 1.25;     
+lami = 0.04;    lamg = 0.5;   %[W/m K]
+%lamc = 4.14; rhoccc=1.2e6;
+rhoccc = 6.7e5;  
+rhoici = 2020*40;   rhogcg = 1000*1000; %[J/K m3]
 wc = 0.25;       wi = 0.08;      wg = 0.036;    %[m]
 epswLW = 0.9;   %long wave wall emmisivity
 epswSW = 0.8;   %short wave wall emmisivity
@@ -108,7 +111,7 @@ Qh = zeros(n,1);  %auxiliary sources (electrical, persons, etc.)
 TintSP = 20*ones(n,1);
 % Inputs
 PhiTot = PhiDir + PhiDif + PhiRef;
-u = [Temp Temp Temp ...
+u = [Temp TintSP Temp ...
   epswSW*Sc*PhiTot taugSW*epswSW*Sg*PhiTot ...
   Qh];
 
@@ -116,11 +119,8 @@ u = [Temp Temp Temp ...
 x0 = zeros(nth,n);
 sys = ss(As,Bs,Cs,Ds);
 [y, t, x] = lsim(sys, u, Time);
-subplot(2,1,1)
-plot(Time/3600,y,'g', Time/3600, Temp,'b'), 
-xlabel('Time [h]'), ylabel('T [C]')
+
 Qh = Kp*(TintSP - y); Qh(1)=0; % thermal load
-subplot(212), plot(Time/3600,Qh,'r')
 
 % Integrate at each time step 0:dt:dt
 % needs to iterate
@@ -129,13 +129,24 @@ th = zeros(size(As,2),n);
 for k = 1:n-1
  x0 = th(:,k);
  % x = lsode (@(x, t) ssm(x, t, As, Bs, u(k,:)'), x0, 0:dt:dt);
- [y, t, x] = lsim(sys, u(k:k+1,:), 0:dt:dt,x0);
+ [y1, t, x] = lsim(sys, u(k:k+1,:), 0:dt:dt,x0);
  th(:,k+1) = x(2,:)';
  th(:,k+1) = min(TintSP(k+1),th(:,k+1)); % limit th_int to set point
  Qg(k+1) = Kp*(TintSP(k+1) - th(7,k+1));
+ 
+%  th(:,k) = x(2,:)';
+%  th(:,k) = min(TintSP(k),th(:,k)); % limit th_int to set point
+%  Qhvac(k+1) = Kp*(TintSP(k) - th(7,k));
 end
-subplot(211), hold on, plot(Time/3600, th(7,:),'r'), hold off
-
-subplot(212), hold on, plot(Time/3600,Qg), hold off
+figure,
+subplot(2,1,1)
+plot(Time/3600,y,'g', Time/3600, Temp,'b',Time/3600, th(7,:),'r'), 
+xlabel('Time [h]'), ylabel('T [°C]'),grid on
+title('Temperature Analysis')
+legend('Inside Temperature','Outside Temperature','Node 7 Temperature')
+subplot(2,1,2), plot(Time/3600,Qh,'r',Time/3600,Qg),grid on
+title('Energy Analysis')
+legend('Sensible Heat','Auxiliary Heating')
 xlabel('Time [h]'), ylabel('Q_g [W]')
+
 
