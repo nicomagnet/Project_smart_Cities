@@ -1,18 +1,18 @@
-% 5 walls: concrete (4 layers) + insulation (2 layers)
+%% Analysis Thermodynamic 
+% 5 walls: concrete (4 layers) + insulation (1 layers)
 % glass (1 node)
-% ventilation
+% Only Ventilation
 % Inputs: outdoor temperature, solar radiation, HVAC heat flow rate
 % Feed back(FB) / control : 1) HVAC 2) enveloppe: ventilation + solar
 
 clc, clear all
-% pkg load control
 
-% Data
-% ******
-% Read data
+%% Data
+% Read data from
+
 n00ReadWeatherFilesSolRad;  %read weather files
 Kp = 1000; %P-controller gain: large for precision
-Sc = 7.2*6.925; Si = Sc; Sg = 10*1.01*1.48; %surface [m2]: concrete, insulation, glass
+Sc = 7.2*6.925; Si = Sc; Sg = 10*1.01*1.48; %surface [m2]
 Va = Sc*2.5; %air volume[m3]
 
 rhoa = 1.2; ca = 1000;  %indoor air density; heat capacity
@@ -35,7 +35,7 @@ alphagSW = 0.2; %short wave glass absortivity
 % convection coefficents
 hi = 4; ho = 10;  %[W/m2 K]
 
-% MODEL
+%% MODEL
 % *****
 nth = 14; nq = 16; % # of temperature node, # of flow nodes
 
@@ -56,7 +56,6 @@ C(8,8)=1/4*Sc*wc*rhoccc; for i=9:11; C(i,i)=C(8,8); end;
 C(12,12)=1/2*Si*wi*rhoici; C(13,13)=C(12,12);
 C(14,14)=Sg*wg*rhogcg + Va*rhoa*ca; 
 
-
 % A adjancy matrix
 A = zeros(nq,nth);
 A(1,1) = 1; A(2,1) = -1;
@@ -75,8 +74,8 @@ A(13,7) = 1; A(14,14) = 1;
 A(15,14) = 1; A(15,7) = -1;
 A(16,14) = 1; 
 
-%State-space representation
-%State-space model
+% State-space representation
+% State-space model
 nnodes = size(C,1); %n° total nodes
 nC = rank(C);       %n° nodes with capacity
 n0 = nnodes - nC;   %n° of nodes with zero capacity
@@ -96,15 +95,13 @@ CC = C(n0+1:end,n0+1:end);
 As = inv(CC)*(-K21*inv(K11)*K12 + K22);
 Bs = inv(CC)*[-K21*inv(K11)*Kb1+Kb2 -K21*inv(K11) eye(nnodes-n0,nnodes-n0)];
 
-%Select relevant inputs and outputs
+% Select relevant inputs and outputs
 Bs = Bs(:,[[1 14 16] nq+[1 7 14]]); %inputs: [To Ti To Phiw Phii Qh]
 Cs = zeros(1,nC);Cs(nC)=1;  %output
-%Ds = zeros(1,length(Bs));
+% Ds = zeros(1,length(Bs));
 Ds=0;
 
-% SIMULATION
-% **********
-
+%% SIMULATION
 n = size(Time,1);
 th = zeros(nth,n);
 Qh = zeros(n,1);  %auxiliary sources (electrical, persons, etc.)
